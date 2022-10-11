@@ -1,4 +1,4 @@
-from email.mime import image
+# %%
 import model
 from PIL import Image
 from torchvision import transforms
@@ -7,6 +7,7 @@ from torch.nn import functional as F
 
 from train import Trainer
 
+# %%
 net = model.ColorNet()
 net = net.cuda()
 trainer = Trainer(net, None, None)
@@ -30,7 +31,31 @@ img = F.pad(
 
 img = torch.cat([img, pred], 1)
 print(img.shape)
-img = img/2+0.5
+img = img / 2 + 0.5
 img = img.squeeze()
 img = transforms.ToPILImage('YCbCr')(img)
-img.save('colored.jpg',quality=100)
+img.save('colored.jpg', quality=100)
+
+# %%
+from zipfile import ZipFile
+import io
+from PIL import Image
+from IPython.display import display
+with ZipFile(R'E:\Download\train2014.zip') as f:
+  for finfo in f.infolist():
+    if not finfo.filename.endswith('.jpg'):
+      continue
+    print(finfo)
+    img_data = f.read(finfo.filename)
+    # print(img_data)
+    img_data = io.BytesIO(img_data)
+    img_data.filename = finfo.filename
+    img = Image.open(img_data)
+    display(img)
+    break
+
+# %%
+from os import path
+
+path.splitext('test.jpg')
+# %%
