@@ -7,6 +7,7 @@ from torch import nn
 from torchvision import transforms as trs
 from threading import Lock
 
+
 class ZipImageDS(Dataset):
 
   def __init__(self,
@@ -40,5 +41,6 @@ class ZipImageDS(Dataset):
     img = self.zfile.read(finfo.filename)
     img = BytesIO(img)
     # print(img,len(img))
-    img = Image.open(img)
-    return self.transforms(img)
+    img = Image.open(img).convert('YCbCr')
+    img: torch.Tensor = self.transforms(img)
+    return img[0].unsqueeze(0), img[1:]
