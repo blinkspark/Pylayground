@@ -1,9 +1,11 @@
+from io import BytesIO
+from PIL import Image
 import torch, torchvision, os
-from torch.utils.data import Dataset,Sampler
-from zipfile import ZipFile
+from torch.utils.data import Dataset, Sampler
+from zipfile import ZipFile, ZipInfo
 from torch import nn
 from torchvision import transforms as trs
-
+from threading import Lock
 
 class ZipImageDS(Dataset):
 
@@ -23,8 +25,10 @@ class ZipImageDS(Dataset):
         trs.ToTensor(),
         trs.Normalize(0.5, 0.5),
     ])
+    self.lock = Lock()
 
-  def file_filter(self, fname: str):
+  def file_filter(self, finfo: ZipInfo):
+    fname = finfo.filename
     _, ext = os.path.splitext(fname)
     return ext in self.exts
 
@@ -32,4 +36,9 @@ class ZipImageDS(Dataset):
     return len(self.imglist)
 
   def __getitem__(self, index):
-    pass
+    finfo = self.imglist[index]
+    img = self.zfile.read(finfo.filename)
+    img = BytesIO(img)
+    # print(img,len(img))
+    img = Image.open(img)
+    return self.transforms(img)
