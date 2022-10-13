@@ -69,7 +69,7 @@
 #   img = Image.fromarray(frame)
 #   img.show()
 
-# %%
+# %% play
 import dataset
 from torch.utils.data import DataLoader
 from time import perf_counter
@@ -80,3 +80,13 @@ if __name__ == '__main__':
   before = perf_counter()
   next(iter(dl))
   print(perf_counter()-before)
+
+# %%
+import dataset
+
+ds = dataset.ImgFolderDS(R'E:\tmp\training').filter_grayscale()
+ds.save_indexes('pixiv_index.pth')
+
+# %%
+len(ds.indexes)
+# %%
