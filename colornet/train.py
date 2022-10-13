@@ -1,4 +1,3 @@
-# %%
 import torch, torchvision
 from torch import nn
 from torch.nn import functional as F
@@ -138,20 +137,19 @@ class MyDS(Dataset):
     return img[0].unsqueeze(0), img[1:]
 
 
-# %%
 if __name__ == '__main__':
-  train_ds = CIFAR10('data', train=True)
-  test_ds = CIFAR10('data', train=False)
+  from dataset import ZipImageDS
+  train_ds = ZipImageDS(R'F:\Download\Compressed\train2014.zip')
+  test_ds = ZipImageDS(R'F:\Download\Compressed\val2014.zip')
+  
+  train_dl = DataLoader(train_ds,batch_size=32,shuffle=True)
+  test_dl = DataLoader(test_ds,batch_size=32,shuffle=True)
 
-  train_ds = MyDS(train_ds)
-  test_ds = MyDS(test_ds)
-
-  train_dl = DataLoader(train_ds, 100, True, num_workers=4)
-
-  test_dl = DataLoader(test_ds, 100, True, num_workers=4)
+  # print(next(iter(train_dl))[0].shape)
+  # print(next(iter(train_dl))[1].shape)
 
   trainer = Trainer(ColorNet(), train_dl, test_dl, lr=1e-3)
   # trainer.load('colornet-9-0.07162804681807756.pth')
-  trainer.fit(patient=20, start_epoch=20)
+  trainer.fit(patient=20,steps_per_epoch=10,val_steps_per_epoch=2)
   # from IPython.display import display
   # display(train_ds[0][0])
