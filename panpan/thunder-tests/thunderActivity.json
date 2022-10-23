@@ -1,0 +1,21 @@
+[
+  {
+    "_id": "0e474ab6-b97b-4321-96f9-23e5238f7c7f",
+    "colId": "history",
+    "containerId": "",
+    "name": "http://localhost:8000/login",
+    "url": "http://localhost:8000/login/",
+    "method": "POST",
+    "sortNum": 0,
+    "created": "2022-10-21T08:34:06.102Z",
+    "modified": "2022-10-21T08:41:09.064Z",
+    "headers": [],
+    "params": [],
+    "body": {
+      "type": "json",
+      "raw": "{\n  \"uname\": \"aaa\",\n  \"passwd\": \"123456\"\n}",
+      "form": []
+    },
+    "tests": []
+  }
+]
