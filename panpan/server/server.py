@@ -1,17 +1,17 @@
-import base64
+from base64 import urlsafe_b64encode
 from io import BytesIO
 import random
-import string
-from fastapi import FastAPI, Depends, Form, HTTPException
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
+from uuid import uuid4
+from fastapi import FastAPI, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
+from typing import Union
 from argon2 import hash_password, verify_password
 from captcha.image import ImageCaptcha
 from PIL import ImageFile, Image
 
 app = FastAPI()
 img_captcha = ImageCaptcha()
-gen_dict = 'abcdefgjkmpqrstwxyzABCDEFGJKMPQRSTWXYZ234578'
+gen_dict = 'ABCEFGHJKMNPQRTWXYZ23478'
 
 
 class UserObject(BaseModel):
@@ -25,6 +25,12 @@ class TokenObject(BaseModel):
   token: str
 
 
+class CaptchaObject(BaseModel):
+  id: str
+  img: bytes
+  value: Union[str, None]
+
+
 # @app.post('/token')
 def veryfy_token(token: TokenObject):
   return token.token
@@ -34,15 +40,18 @@ def rand_captcha_str(length=4):
   return ''.join([random.choice(gen_dict) for _ in range(4)])
 
 
-@app.get('/captcha/get')
-def get_captcha():
+@app.get('/captcha/get',
+         response_model=CaptchaObject,
+         response_model_exclude_unset=True)
+def get_captcha(req: Request):
+  print(req.client.host)
   captcha_txt = rand_captcha_str()
   img = img_captcha.generate_image(captcha_txt)
   buffer = BytesIO()
-  buffer.write(b'aa')
-  print(buffer)
   img.save(buffer, format='JPEG')
-  return {"captcha_img": buffer.read()}
+  buffer = buffer.getvalue()
+  buffer = urlsafe_b64encode(buffer).rstrip(b'=')
+  return CaptchaObject(id=uuid4().hex, img=buffer)
 
 
 @app.post('/login')
