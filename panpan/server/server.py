@@ -3,32 +3,16 @@ from io import BytesIO
 import random
 from uuid import uuid4
 from fastapi import FastAPI, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
-from typing import Union
 from argon2 import hash_password, verify_password
 from captcha.image import ImageCaptcha
-from PIL import ImageFile, Image
+# from PIL import ImageFile, Image
+from ..defs import UserObject, CaptchaObject, TokenObject
+from .session_store import SessionStore
 
 app = FastAPI()
 img_captcha = ImageCaptcha()
 gen_dict = 'ABCEFGHJKMNPQRTWXYZ23478'
-
-
-class UserObject(BaseModel):
-  uname: str
-  passwd: str
-  captcha_id: str
-  captcha_txt: str
-
-
-class TokenObject(BaseModel):
-  token: str
-
-
-class CaptchaObject(BaseModel):
-  id: str
-  img: bytes
-  value: Union[str, None]
+session_store = SessionStore()
 
 
 # @app.post('/token')
@@ -51,7 +35,19 @@ def get_captcha(req: Request):
   img.save(buffer, format='JPEG')
   buffer = buffer.getvalue()
   buffer = urlsafe_b64encode(buffer).rstrip(b'=')
-  return CaptchaObject(id=uuid4().hex, img=buffer)
+  captcha_id = uuid4()
+  session_store.set_session(req.client.host,
+                            CaptchaObject(captcha_id.hex, buffer, captcha_txt))
+  return CaptchaObject(id=captcha_id.hex, img=buffer)
+
+
+@app.get('/captcha/val')
+def val_captcha(req: Request, captcha: CaptchaObject):
+  host_ip = req.client.host
+  session_captcha = session_store.get(host_ip)
+  if session_captcha.id != captcha.id:
+    return False
+  return session_captcha.value == captcha.value
 
 
 @app.post('/login')
