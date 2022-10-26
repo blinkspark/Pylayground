@@ -37,7 +37,7 @@ def veryfy_token(token: TokenObject):
 
 
 def rand_captcha_str(length=4):
-  return ''.join([random.choice(gen_dict) for _ in range(4)])
+  return ''.join([random.choice(gen_dict) for _ in range(length)])
 
 
 @app.get('/captcha/get',
