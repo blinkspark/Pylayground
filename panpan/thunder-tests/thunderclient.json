@@ -50,5 +50,24 @@
     "headers": [],
     "params": [],
     "tests": []
+  },
+  {
+    "_id": "36bb81aa-1cb9-4369-9985-58c6a1680f23",
+    "colId": "8c6a22f8-bbc3-4492-a0a9-9fc73de96dc0",
+    "containerId": "",
+    "name": "http://localhost:8000/play",
+    "url": "http://localhost:8000/play",
+    "method": "POST",
+    "sortNum": 40000,
+    "created": "2022-10-26T08:30:11.482Z",
+    "modified": "2022-10-26T08:30:11.482Z",
+    "headers": [],
+    "params": [],
+    "body": {
+      "type": "json",
+      "raw": "{\n  \"uid\": \"123456\"\n}",
+      "form": []
+    },
+    "tests": []
   }
 ]
