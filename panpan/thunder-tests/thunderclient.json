@@ -60,12 +60,12 @@
     "method": "POST",
     "sortNum": 40000,
     "created": "2022-10-26T08:30:11.482Z",
-    "modified": "2022-10-26T08:30:11.482Z",
+    "modified": "2022-10-28T14:16:10.539Z",
     "headers": [],
     "params": [],
     "body": {
       "type": "json",
-      "raw": "{\n  \"uid\": \"123456\"\n}",
+      "raw": "{\n  \"uid\": \"123456\",\n  \"capt_id\": \"321\"\n}",
       "form": []
     },
     "tests": []

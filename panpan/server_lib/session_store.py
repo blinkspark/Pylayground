@@ -1,19 +1,24 @@
-from . import CaptchaReq
+from . import SessionObj
 import pickle
+from concurrent.futures import ThreadPoolExecutor
+from threading import Timer, Lock
 
 
 class SessionStore():
-  session_dict: dict[str, CaptchaReq]
-  data_altered: bool
+  timer: Timer
 
   def __init__(self):
-    self.session_dict = dict()
+    self.session_dict:dict[str, SessionObj] = dict()
 
-  def set_session(self, host_ip: str, data: CaptchaReq):
-    self.session_dict[host_ip] = data
+  # def gc(self):
+  #   for uid, data in self.session_dict:
+  #     pass
 
-  def get(self, host_ip: str):
-    return self.session_dict[host_ip]
+  def set_session(self, uid: str, data: SessionObj):
+    self.session_dict[uid] = data
+
+  def get(self, uid: str):
+    return self.session_dict[uid]
 
   # def save(self, save_path: str):
   #   with open(save_path, 'w') as f:

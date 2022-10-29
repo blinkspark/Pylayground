@@ -2,24 +2,29 @@ from pydantic import BaseModel
 from typing import Union
 
 
-class BaseObj(BaseModel):
+class BaseReq(BaseModel):
   uid: str
 
 
-class CaptchaBase(BaseObj):
+class SessionObj(BaseModel):
   capt_id: str
-
-class CaptchaReq(CaptchaBase):
-  capt_value: str | None
-
-class CaptchaRes(CaptchaBase):
-  capt_img: bytes | None
+  capt_value: str
 
 
-class UserObj(CaptchaReq):
+class CaptchaReq(BaseReq):
+  capt_id: str
+  capt_value: str
+
+
+class CaptchaRes(BaseReq):
+  capt_id: str
+  capt_img: bytes
+
+
+class UserReq(CaptchaReq):
   uname: str
   passwd: str
 
 
-class TokenObj(BaseObj):
+class TokenReq(BaseReq):
   token: str
