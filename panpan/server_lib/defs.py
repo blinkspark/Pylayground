@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 from typing import Union
 
@@ -9,6 +10,7 @@ class BaseReq(BaseModel):
 class SessionObj(BaseModel):
   capt_id: str
   capt_value: str
+  expires: datetime
 
 
 class CaptchaReq(BaseReq):
@@ -16,7 +18,7 @@ class CaptchaReq(BaseReq):
   capt_value: str
 
 
-class CaptchaRes(BaseReq):
+class CaptchaRes(BaseModel):
   capt_id: str
   capt_img: bytes
 
