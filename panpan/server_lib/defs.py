@@ -13,7 +13,7 @@ class SessionObj(BaseModel):
   expires: datetime
 
 
-class CaptchaReq(BaseReq):
+class CaptchaReq(BaseModel):
   capt_id: str
   capt_value: str
 
@@ -28,5 +28,14 @@ class UserReq(CaptchaReq):
   passwd: str
 
 
+class UserRes(BaseModel):
+  uname: str|None
+  token: str|None
+
+
 class TokenReq(BaseReq):
   token: str
+
+
+class PlayReq(TokenReq):
+  play: str

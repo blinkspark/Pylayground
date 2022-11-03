@@ -22,17 +22,22 @@
     "_id": "a86ca4c1-be47-4c45-b6bc-b1989f80556e",
     "colId": "8c6a22f8-bbc3-4492-a0a9-9fc73de96dc0",
     "containerId": "",
-    "name": "http://localhost:8000/register",
-    "url": "http://localhost:8000/register",
+    "name": "http://localhost:8000/user/register",
+    "url": "http://localhost:8000/user/register",
     "method": "POST",
     "sortNum": 20000,
     "created": "2022-10-21T08:42:09.421Z",
-    "modified": "2022-10-22T04:09:56.578Z",
-    "headers": [],
+    "modified": "2022-11-03T08:15:42.267Z",
+    "headers": [
+      {
+        "name": "X-UID",
+        "value": "123456"
+      }
+    ],
     "params": [],
     "body": {
       "type": "json",
-      "raw": "{\n  \"token\":\"123aaa465\"\n}",
+      "raw": "{\n  \"capt_id\":\"2fb8aa48eab74f159079e3b312c1d26c\",\n  \"capt_value\":\"MNYP\",\n  \"uname\":\"abc\",\n  \"passwd\":\"123\"\n}",
       "form": []
     },
     "tests": []
@@ -41,19 +46,19 @@
     "_id": "d8238279-5fde-4d12-8046-050d36e036db",
     "colId": "8c6a22f8-bbc3-4492-a0a9-9fc73de96dc0",
     "containerId": "",
-    "name": "http://localhost:8000/captcha/get",
-    "url": "http://localhost:8000/captcha/get",
+    "name": "http://localhost:8000/captcha",
+    "url": "http://localhost:8000/captcha",
     "method": "GET",
     "sortNum": 30000,
     "created": "2022-10-22T04:48:53.022Z",
-    "modified": "2022-11-01T13:57:02.793Z",
-    "headers": [],
+    "modified": "2022-11-03T08:13:59.283Z",
+    "headers": [
+      {
+        "name": "X-UID",
+        "value": "123456"
+      }
+    ],
     "params": [],
-    "body": {
-      "type": "json",
-      "raw": "{\n  \"uid\":\"123456\"\n}",
-      "form": []
-    },
     "tests": []
   },
   {
@@ -61,18 +66,13 @@
     "colId": "8c6a22f8-bbc3-4492-a0a9-9fc73de96dc0",
     "containerId": "",
     "name": "http://localhost:8000/play",
-    "url": "http://localhost:8000/play",
-    "method": "POST",
+    "url": "http://localhost:8000/play//aa/bb/cc",
+    "method": "GET",
     "sortNum": 40000,
     "created": "2022-10-26T08:30:11.482Z",
-    "modified": "2022-10-28T14:16:10.539Z",
+    "modified": "2022-11-02T09:29:19.060Z",
     "headers": [],
     "params": [],
-    "body": {
-      "type": "json",
-      "raw": "{\n  \"uid\": \"123456\",\n  \"capt_id\": \"321\"\n}",
-      "form": []
-    },
     "tests": []
   },
   {
@@ -92,6 +92,29 @@
       "raw": "{\n  \"uid\": \"123456\",\n  \"capt_id\": \"77b725ca896b416a957d2f3e51f22e03\",\n  \"capt_value\":\"ZRZE\"\n}",
       "form": []
     },
+    "tests": []
+  },
+  {
+    "_id": "87c55e5f-a520-41ea-8eb4-7fd99af59600",
+    "colId": "8c6a22f8-bbc3-4492-a0a9-9fc73de96dc0",
+    "containerId": "",
+    "name": "http://localhost:8000/file",
+    "url": "http://localhost:8000/file",
+    "method": "GET",
+    "sortNum": 45000,
+    "created": "2022-11-03T08:02:03.975Z",
+    "modified": "2022-11-03T08:31:24.248Z",
+    "headers": [
+      {
+        "name": "X-UID",
+        "value": "123456"
+      },
+      {
+        "name": "X-Token",
+        "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2Njg2NzI5NDJ9.j4ZTswNiBC8_1OAkTfz54fVk3k_mz035c4NIoJmXBXg"
+      }
+    ],
+    "params": [],
     "tests": []
   }
 ]

@@ -1,4 +1,4 @@
-from httpx import AsyncClient
+from httpx import AsyncClient as HttpxAsyncClient
 import asyncio
 import sys, os, json
 from google.cloud.firestore import AsyncClient, DocumentReference
@@ -6,6 +6,11 @@ from google.oauth2.service_account import Credentials
 
 
 async def main():
+  venvv = os.environ.get('VENVV')
+  print(venvv)
+  pass
+
+async def play_firestore():
   c = AsyncClient.from_service_account_json('account.json')
   col = c.collection('users')
   
@@ -18,7 +23,8 @@ async def main():
 
 
 async def pocketbase():
-  async with AsyncClient() as c:
+  async with HttpxAsyncClient() as c:
+
     res = await c.get(
         'http://127.0.0.1:8090/api/collections',
         headers={
@@ -32,7 +38,7 @@ async def pocketbase():
 async def pocketbase_login():
   with open('env.json', 'r') as f:
     cfg = json.load(f)
-  async with AsyncClient() as c:
+  async with HttpxAsyncClient() as c:
     res = await c.post('http://127.0.0.1:8090/api/admins/auth-via-email',
                        json=cfg)
     print(res.content)
