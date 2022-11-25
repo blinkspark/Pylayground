@@ -58,20 +58,18 @@ class SRGAN(pl.LightningModule):
     self.automatic_optimization = False
     self.generator = nn.Sequential(
         ConvBlk(1, 128, mid=64),
-        nn.UpsamplingBilinear2d(scale_factor=2),
-        ConvBlk(128, 64, mid=64),
-        nn.Conv2d(64, 1, kernel_size=5, padding=2),
+        nn.Upsample(scale_factor=2, mode='bicubic'),
+        ConvBlk(128, 256, mid=128),
+        nn.Conv2d(256, 1, kernel_size=1),
     )
     self.discriminator = nn.Sequential(
         ConvBlk(1, 64),
         nn.MaxPool2d(2, 2),
         ConvBlk(64, 128),
-        nn.MaxPool2d(2, 2),
-        ConvBlk(128, 256),
         nn.AdaptiveAvgPool2d(1),
         nn.Flatten(1),
         nn.Dropout(0.3),
-        nn.Linear(256, 1),
+        nn.Linear(128, 1),
     )
 
   def forward(self, x):
@@ -113,7 +111,7 @@ class SRGAN(pl.LightningModule):
                                 self.discriminator.parameters(),
                                 self.hparams.lr)
 
-  def training_step(self, batch, _):
+  def training_step(self, batch, step):
     x, y = batch
     g_opt, d_opt = self.optimizers()
     g_opt: torch.optim.Adam
@@ -123,16 +121,17 @@ class SRGAN(pl.LightningModule):
     ones = torch.ones((batch_size, 1), device=self.device)
 
     # train discriminator
-    with torch.no_grad():
-      generated = self.generator(x)
-    d_opt.zero_grad()
-    labels = torch.cat([zeros, ones])
-    inputs = torch.cat([generated, y])
-    pred = self.discriminator(inputs)
-    d_loss = F.binary_cross_entropy_with_logits(pred, labels)
-    self.log('train_d_loss', d_loss.item())
-    self.manual_backward(d_loss)
-    d_opt.step()
+    if step % 3 <= 1:
+      with torch.no_grad():
+        generated = self.generator(x)
+      d_opt.zero_grad()
+      labels = torch.cat([zeros, ones])
+      inputs = torch.cat([generated, y])
+      pred = self.discriminator(inputs)
+      d_loss = F.binary_cross_entropy_with_logits(pred, labels)
+      self.log('train_d_loss', d_loss.item())
+      self.manual_backward(d_loss)
+      d_opt.step()
 
     # train generator
     g_opt.zero_grad()
@@ -166,6 +165,7 @@ class SRGAN(pl.LightningModule):
 if __name__ == '__main__':
   m = SRGAN(batch_size=512)
   tr = pl.Trainer(
+      max_epochs=200,
       accelerator='cuda',
       precision=16,
   )
