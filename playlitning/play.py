@@ -19,22 +19,23 @@ from torch.utils.data import DataLoader, random_split
 # dd = torch.cat([data, data1])
 # print(dd.shape)
 
-if __name__ == '__main__':
+
+def play_srgan():
   from srgan.srgan import SRGAN
   from PIL import Image
   m = SRGAN()
   m.load_from_checkpoint(
-      './lightning_logs/version_2/checkpoints/epoch=10-step=1804.ckpt')
+      './lightning_logs/version_0/checkpoints/epoch=110-step=16317.ckpt')
   m.eval()
   with torch.no_grad():
     img = Image.open('F:\\tmp\\test.jpg')
-    img1 = img.convert('YCbCr')
-    img1 = img1.resize((img.size[0] * 2, img.size[1] * 2))
-    img1: torch.Tensor = transforms.ToTensor()(img1)
-    img1 = torch.split(img1, [1, 2])[1]
+    # img1 = img.convert('YCbCr')
+    # img1 = img1.resize((img.size[0] * 2, img.size[1] * 2))
+    # img1: torch.Tensor = transforms.ToTensor()(img1)
+    # img1 = torch.split(img1, [1, 2])[1]
     trs = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Grayscale(),
+        # transforms.Grayscale(),
         transforms.Normalize(0.5, 0.5, inplace=True)
     ])
     toimg = transforms.ToPILImage()
@@ -46,4 +47,8 @@ if __name__ == '__main__':
     # print(img.shape,img1.shape)
     # img = torch.vstack([img, img1])
     img = toimg(img)
-    img.save('test.jpg')
+    img.save('outputs/test.jpg')
+
+
+if __name__ == '__main__':
+  play_srgan()

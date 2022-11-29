@@ -22,11 +22,11 @@ class ConvBlk(nn.Module):
       mid = outputs
     self.blk = nn.Sequential(
         nn.Conv2d(inputs, mid, kernel_size=kernel_size, padding=padding),
-        nn.ReLU(inplace=True),
-        nn.GroupNorm(1, mid),
+        nn.SiLU(inplace=True),
+        nn.GroupNorm(mid // 4, mid),
         nn.Conv2d(mid, outputs, kernel_size=kernel_size, padding=padding),
-        nn.ReLU(inplace=True),
-        nn.GroupNorm(1, outputs),
+        nn.SiLU(inplace=True),
+        nn.GroupNorm(outputs // 4, outputs),
     )
 
   def forward(self, x):
@@ -52,18 +52,23 @@ class SRDataset(Dataset):
 
 class SRGAN(pl.LightningModule):
 
-  def __init__(self, lr=1e-5, batch_size=128, num_workers=2):
+  def __init__(self, lr=5e-5, up_factor=2, batch_size=128, num_workers=2):
     super().__init__()
     self.save_hyperparameters()
+    self.val_dl_ = None
     self.automatic_optimization = False
     self.generator = nn.Sequential(
-        ConvBlk(1, 128, mid=64),
-        nn.Upsample(scale_factor=2, mode='bicubic'),
-        ConvBlk(128, 256, mid=128),
-        nn.Conv2d(256, 1, kernel_size=1),
+        ConvBlk(3, 64),
+        ConvBlk(64, 64),
+        ConvBlk(64, 128),
+        nn.Conv2d(128, 128 * up_factor**2, kernel_size=5, padding=2),
+        nn.SiLU(inplace=True),
+        nn.PixelShuffle(up_factor),
+        nn.Conv2d(128, 3, kernel_size=5, padding=2),
+        # nn.Tanh(),
     )
     self.discriminator = nn.Sequential(
-        ConvBlk(1, 64),
+        ConvBlk(3, 64),
         nn.MaxPool2d(2, 2),
         ConvBlk(64, 128),
         nn.AdaptiveAvgPool2d(1),
@@ -78,7 +83,7 @@ class SRGAN(pl.LightningModule):
   def train_dataloader(self):
     trs = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Grayscale(),
+        # transforms.Grayscale(),
         transforms.Normalize(0.5, 0.5, inplace=True)
     ])
     ds = CIFAR10('data', train=True, download=True, transform=trs)
@@ -92,7 +97,7 @@ class SRGAN(pl.LightningModule):
   def val_dataloader(self):
     trs = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Grayscale(),
+        # transforms.Grayscale(),
         transforms.Normalize(0.5, 0.5, inplace=True)
     ])
     ds = CIFAR10('data', train=False, download=True, transform=trs)
@@ -120,8 +125,9 @@ class SRGAN(pl.LightningModule):
     zeros = torch.zeros((batch_size, 1), device=self.device)
     ones = torch.ones((batch_size, 1), device=self.device)
 
+    d_loss = None
     # train discriminator
-    if step % 3 <= 1:
+    if step % 2 < 1:
       with torch.no_grad():
         generated = self.generator(x)
       d_opt.zero_grad()
@@ -131,6 +137,7 @@ class SRGAN(pl.LightningModule):
       d_loss = F.binary_cross_entropy_with_logits(pred, labels)
       self.log('train_d_loss', d_loss.item())
       self.manual_backward(d_loss)
+      # torch.nn.utils.clip_grad_norm_(self.discriminator.parameters(), 0.5)
       d_opt.step()
 
     # train generator
@@ -139,27 +146,53 @@ class SRGAN(pl.LightningModule):
     g_loss = F.binary_cross_entropy_with_logits(pred, ones)
     self.log('train_g_loss', g_loss)
     self.manual_backward(g_loss)
+    # torch.nn.utils.clip_grad_norm_(self.generator.parameters(), 0.5)
     g_opt.step()
+    ret = {
+        'train_d_loss': d_loss.item(),
+        'train_g_loss': g_loss.item()
+    } if d_loss is not None else {
+        'train_g_loss': g_loss.item()
+    }
+    return ret
 
-  def validation_step(self, batch, _):
-    x, y = batch
-    batch_size = x.shape[0]
-    zeros = torch.zeros((batch_size, 1), device=self.device)
-    ones = torch.ones((batch_size, 1), device=self.device)
+  def training_epoch_end(self, outputs) -> None:
+    if self.val_dl_ is None:
+      self.val_dl_ = self.val_dataloader()
+    for (x, _) in self.val_dl_:
+      x = torch.split(x, 2)[0]
+      x: torch.Tensor = x.to(self.device)
+      # y: torch.Tensor = y.to(self.device)
+      self.eval()
+      with torch.no_grad():
+        toimg = transforms.ToPILImage()
+        pred = self.generator(x)
+        for i, img in enumerate(pred):
+          img = img / 2 + 0.5
+          img = toimg(img)
+          img.save(f'outputs/{self.current_epoch}-{i}.jpg')
+      # self.train()
+      break
 
-    # train discriminator
-    with torch.no_grad():
-      generated = self.generator(x)
-    labels = torch.cat([zeros, ones])
-    inputs = torch.cat([generated, y])
-    pred = self.discriminator(inputs)
-    d_loss = F.binary_cross_entropy_with_logits(pred, labels)
-    self.log('val_d_loss', d_loss.item())
+  # def validation_step(self, batch, _):
+  #   x, y = batch
+  #   batch_size = x.shape[0]
+  #   zeros = torch.zeros((batch_size, 1), device=self.device)
+  #   ones = torch.ones((batch_size, 1), device=self.device)
 
-    # train generator
-    pred = self.discriminator(self.generator(x))
-    g_loss = F.binary_cross_entropy_with_logits(pred, ones)
-    self.log('val_g_loss', g_loss)
+  #   # train discriminator
+  #   with torch.no_grad():
+  #     generated = self.generator(x)
+  #   labels = torch.cat([zeros, ones])
+  #   inputs = torch.cat([generated, y])
+  #   pred = self.discriminator(inputs)
+  #   d_loss = F.binary_cross_entropy_with_logits(pred, labels)
+  #   self.log('val_d_loss', d_loss.item())
+
+  #   # train generator
+  #   pred = self.discriminator(self.generator(x))
+  #   g_loss = F.binary_cross_entropy_with_logits(pred, ones)
+  #   self.log('val_g_loss', g_loss)
 
 
 if __name__ == '__main__':
@@ -168,5 +201,6 @@ if __name__ == '__main__':
       max_epochs=200,
       accelerator='cuda',
       precision=16,
+      fast_dev_run=False,
   )
   tr.fit(m)
