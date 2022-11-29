@@ -50,13 +50,16 @@ class SRDataset(Dataset):
     return x0, x
 
 
-class SRGAN(pl.LightningModule):
+class Generator(pl.LightningModule):
 
-  def __init__(self, lr=5e-5, up_factor=2, batch_size=128, num_workers=2):
+  def __init__(self,
+               up_factor=2,
+               lr=2e-5,
+               batch_size=640,
+               num_workers=4) -> None:
     super().__init__()
     self.save_hyperparameters()
     self.val_dl_ = None
-    self.automatic_optimization = False
     self.generator = nn.Sequential(
         ConvBlk(3, 64),
         ConvBlk(64, 64),
@@ -67,6 +70,87 @@ class SRGAN(pl.LightningModule):
         nn.Conv2d(128, 3, kernel_size=5, padding=2),
         # nn.Tanh(),
     )
+
+  def train_dataloader(self):
+    trs = transforms.Compose([
+        transforms.ToTensor(),
+        # transforms.Grayscale(),
+        transforms.Normalize(0.5, 0.5, inplace=True)
+    ])
+    ds = CIFAR10('data', train=True, download=True, transform=trs)
+    ds = SRDataset(ds)
+    dl = DataLoader(ds,
+                    batch_size=self.hparams.batch_size,
+                    shuffle=True,
+                    num_workers=self.hparams.num_workers)
+    return dl
+
+  def val_dataloader(self):
+    trs = transforms.Compose([
+        transforms.ToTensor(),
+        # transforms.Grayscale(),
+        transforms.Normalize(0.5, 0.5, inplace=True)
+    ])
+    ds = CIFAR10('data', train=False, download=True, transform=trs)
+    ds = SRDataset(ds)
+    ds = random_split(ds, [0.2, 0.8],
+                      generator=torch.Generator().manual_seed(42))[0]
+    dl = DataLoader(ds,
+                    batch_size=self.hparams.batch_size,
+                    shuffle=False,
+                    num_workers=self.hparams.num_workers)
+    return dl
+
+  def configure_optimizers(self):
+    return torch.optim.Adam(self.generator.parameters(), self.hparams.lr)
+
+  def training_step(self, batch, step):
+    x, y = batch
+    pred = self.generator(x)
+    loss = F.mse_loss(pred, y)
+    self.log('train_loss', loss.item())
+    return loss
+
+  def validation_step(self, batch, idx):
+    x, y = batch
+    pred = self.generator(x)
+    loss = F.mse_loss(pred, y)
+    self.log('val_loss', loss.item())
+    return loss
+
+  def validation_epoch_end(self, outputs):
+    for (x, _) in self.trainer.val_dataloaders[0]:
+      x = torch.split(x, 2)[0]
+      x: torch.Tensor = x.to(self.device)
+      # y: torch.Tensor = y.to(self.device)
+      self.eval()
+      with torch.no_grad():
+        toimg = transforms.ToPILImage()
+        pred = self.generator(x)
+        for i, img in enumerate(pred):
+          img = img / 2 + 0.5
+          img = toimg(img)
+          img.save(f'outputs/{self.current_epoch}-{i}.jpg')
+      # self.train()
+      break
+
+  def forward(self, x):
+    return self.generator(x)
+
+
+class SRGAN(pl.LightningModule):
+
+  def __init__(self,
+               generator:pl.LightningModule,
+               lr=2e-5,
+               up_factor=2,
+               batch_size=128,
+               num_workers=2):
+    super().__init__()
+    self.save_hyperparameters(ignore=['generator'])
+    self.val_dl_ = None
+    self.automatic_optimization = False
+    self.generator = generator
     self.discriminator = nn.Sequential(
         ConvBlk(3, 64),
         nn.MaxPool2d(2, 2),
@@ -127,27 +211,29 @@ class SRGAN(pl.LightningModule):
 
     d_loss = None
     # train discriminator
-    if step % 2 < 1:
-      with torch.no_grad():
-        generated = self.generator(x)
-      d_opt.zero_grad()
-      labels = torch.cat([zeros, ones])
-      inputs = torch.cat([generated, y])
-      pred = self.discriminator(inputs)
-      d_loss = F.binary_cross_entropy_with_logits(pred, labels)
-      self.log('train_d_loss', d_loss.item())
-      self.manual_backward(d_loss)
-      # torch.nn.utils.clip_grad_norm_(self.discriminator.parameters(), 0.5)
-      d_opt.step()
+    # if step % 2 < 1:
+    with torch.no_grad():
+      generated = self.generator(x)
+    d_opt.zero_grad()
+    labels = torch.cat([zeros, ones])
+    inputs = torch.cat([generated, y])
+    pred = self.discriminator(inputs)
+    d_loss = F.binary_cross_entropy_with_logits(pred, labels)
+    self.log('train_d_loss', d_loss.item())
+    self.manual_backward(d_loss)
+    # torch.nn.utils.clip_grad_norm_(self.discriminator.parameters(), 0.5)
+    d_opt.step()
 
     # train generator
     g_opt.zero_grad()
+    self.discriminator.requires_grad_(False)
     pred = self.discriminator(self.generator(x))
     g_loss = F.binary_cross_entropy_with_logits(pred, ones)
     self.log('train_g_loss', g_loss)
     self.manual_backward(g_loss)
     # torch.nn.utils.clip_grad_norm_(self.generator.parameters(), 0.5)
     g_opt.step()
+    self.discriminator.requires_grad_(True)
     ret = {
         'train_d_loss': d_loss.item(),
         'train_g_loss': g_loss.item()
@@ -195,12 +281,29 @@ class SRGAN(pl.LightningModule):
   #   self.log('val_g_loss', g_loss)
 
 
-if __name__ == '__main__':
-  m = SRGAN(batch_size=512)
+def train_generator():
+  gen = Generator()
+  # m = SRGAN(batch_size=512)
+  tr = pl.Trainer(max_epochs=100,
+                  accelerator='cuda',
+                  precision=16,
+                  fast_dev_run=False,
+                  callbacks=[callbacks.EarlyStopping('val_loss')])
+  tr.fit(gen)
+
+
+def train_srgan():
+  gen = Generator.load_from_checkpoint(
+      './lightning_logs/version_0/checkpoints/epoch=40-step=3239.ckpt')
+  m = SRGAN(gen, batch_size=512)
   tr = pl.Trainer(
-      max_epochs=200,
+      max_epochs=100,
       accelerator='cuda',
       precision=16,
       fast_dev_run=False,
   )
   tr.fit(m)
+
+
+if __name__ == '__main__':
+  train_srgan()

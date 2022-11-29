@@ -1,0 +1,1 @@
+srgan-generator-epoch=40.ckpt https://share.weiyun.com/9zdrqyZw
