@@ -1,2 +1,3 @@
 data/
 lightning_logs/
+srgan/srgan-generator-epoch=40.ckpt

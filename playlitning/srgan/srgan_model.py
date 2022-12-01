@@ -7,141 +7,14 @@ from torchvision.datasets import CIFAR10
 from torchvision import transforms
 from torch.utils.data import DataLoader, random_split, Dataset
 from PIL import Image
-
-
-class ConvBlk(nn.Module):
-
-  def __init__(self,
-               inputs: int,
-               outputs: int,
-               mid=None,
-               kernel_size=5,
-               padding=2):
-    super().__init__()
-    if mid is None:
-      mid = outputs
-    self.blk = nn.Sequential(
-        nn.Conv2d(inputs, mid, kernel_size=kernel_size, padding=padding),
-        nn.SiLU(inplace=True),
-        nn.GroupNorm(mid // 4, mid),
-        nn.Conv2d(mid, outputs, kernel_size=kernel_size, padding=padding),
-        nn.SiLU(inplace=True),
-        nn.GroupNorm(outputs // 4, outputs),
-    )
-
-  def forward(self, x):
-    return self.blk(x)
-
-
-class SRDataset(Dataset):
-
-  def __init__(self, srcDS: Dataset, target_size=16):
-    super().__init__()
-    self.srcDS = srcDS
-    self.target_size = target_size
-    self.resize = transforms.Resize(16)
-
-  def __len__(self):
-    return len(self.srcDS)
-
-  def __getitem__(self, index):
-    x, _ = self.srcDS[index]
-    x0 = self.resize(x)
-    return x0, x
-
-
-class Generator(pl.LightningModule):
-
-  def __init__(self,
-               up_factor=2,
-               lr=2e-5,
-               batch_size=640,
-               num_workers=4) -> None:
-    super().__init__()
-    self.save_hyperparameters()
-    self.val_dl_ = None
-    self.generator = nn.Sequential(
-        ConvBlk(3, 64),
-        ConvBlk(64, 64),
-        ConvBlk(64, 128),
-        nn.Conv2d(128, 128 * up_factor**2, kernel_size=5, padding=2),
-        nn.SiLU(inplace=True),
-        nn.PixelShuffle(up_factor),
-        nn.Conv2d(128, 3, kernel_size=5, padding=2),
-        # nn.Tanh(),
-    )
-
-  def train_dataloader(self):
-    trs = transforms.Compose([
-        transforms.ToTensor(),
-        # transforms.Grayscale(),
-        transforms.Normalize(0.5, 0.5, inplace=True)
-    ])
-    ds = CIFAR10('data', train=True, download=True, transform=trs)
-    ds = SRDataset(ds)
-    dl = DataLoader(ds,
-                    batch_size=self.hparams.batch_size,
-                    shuffle=True,
-                    num_workers=self.hparams.num_workers)
-    return dl
-
-  def val_dataloader(self):
-    trs = transforms.Compose([
-        transforms.ToTensor(),
-        # transforms.Grayscale(),
-        transforms.Normalize(0.5, 0.5, inplace=True)
-    ])
-    ds = CIFAR10('data', train=False, download=True, transform=trs)
-    ds = SRDataset(ds)
-    ds = random_split(ds, [0.2, 0.8],
-                      generator=torch.Generator().manual_seed(42))[0]
-    dl = DataLoader(ds,
-                    batch_size=self.hparams.batch_size,
-                    shuffle=False,
-                    num_workers=self.hparams.num_workers)
-    return dl
-
-  def configure_optimizers(self):
-    return torch.optim.Adam(self.generator.parameters(), self.hparams.lr)
-
-  def training_step(self, batch, step):
-    x, y = batch
-    pred = self.generator(x)
-    loss = F.mse_loss(pred, y)
-    self.log('train_loss', loss.item())
-    return loss
-
-  def validation_step(self, batch, idx):
-    x, y = batch
-    pred = self.generator(x)
-    loss = F.mse_loss(pred, y)
-    self.log('val_loss', loss.item())
-    return loss
-
-  def validation_epoch_end(self, outputs):
-    for (x, _) in self.trainer.val_dataloaders[0]:
-      x = torch.split(x, 2)[0]
-      x: torch.Tensor = x.to(self.device)
-      # y: torch.Tensor = y.to(self.device)
-      self.eval()
-      with torch.no_grad():
-        toimg = transforms.ToPILImage()
-        pred = self.generator(x)
-        for i, img in enumerate(pred):
-          img = img / 2 + 0.5
-          img = toimg(img)
-          img.save(f'outputs/{self.current_epoch}-{i}.jpg')
-      # self.train()
-      break
-
-  def forward(self, x):
-    return self.generator(x)
+from common import ConvBlk, SRDataset
+from generator import Generator
 
 
 class SRGAN(pl.LightningModule):
 
   def __init__(self,
-               generator:pl.LightningModule,
+               generator: pl.LightningModule,
                lr=2e-5,
                up_factor=2,
                batch_size=128,
@@ -281,29 +154,3 @@ class SRGAN(pl.LightningModule):
   #   self.log('val_g_loss', g_loss)
 
 
-def train_generator():
-  gen = Generator()
-  # m = SRGAN(batch_size=512)
-  tr = pl.Trainer(max_epochs=100,
-                  accelerator='cuda',
-                  precision=16,
-                  fast_dev_run=False,
-                  callbacks=[callbacks.EarlyStopping('val_loss')])
-  tr.fit(gen)
-
-
-def train_srgan():
-  gen = Generator.load_from_checkpoint(
-      './lightning_logs/version_0/checkpoints/epoch=40-step=3239.ckpt')
-  m = SRGAN(gen, batch_size=512)
-  tr = pl.Trainer(
-      max_epochs=100,
-      accelerator='cuda',
-      precision=16,
-      fast_dev_run=False,
-  )
-  tr.fit(m)
-
-
-if __name__ == '__main__':
-  train_srgan()

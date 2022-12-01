@@ -21,11 +21,10 @@ from torch.utils.data import DataLoader, random_split
 
 
 def play_srgan():
-  from srgan.srgan import SRGAN
+  # from srgan.srgan_model import SRGAN
+  from generator import GeneratorV2
   from PIL import Image
-  m = SRGAN()
-  m.load_from_checkpoint(
-      './lightning_logs/version_0/checkpoints/epoch=110-step=16317.ckpt')
+  m = GeneratorV2.load_from_checkpoint('./lightning_logs/version_0/checkpoints/epoch=70-step=5609.ckpt')
   m.eval()
   with torch.no_grad():
     img = Image.open('F:\\tmp\\test.jpg')
@@ -40,8 +39,9 @@ def play_srgan():
     ])
     toimg = transforms.ToPILImage()
     img: torch.Tensor = trs(img)
-    img = img.unsqueeze(0)
-    y = m.generator(img)
+    img = img.unsqueeze(0).to('cuda')
+    m.to('cuda')
+    y = m(img)
     img = y / 2 + 0.5
     img = img[0]
     # print(img.shape,img1.shape)
