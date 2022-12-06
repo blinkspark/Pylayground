@@ -24,7 +24,7 @@ def play_srgan():
   # from srgan.srgan_model import SRGAN
   from generator import GeneratorV2
   from PIL import Image
-  m = GeneratorV2.load_from_checkpoint('./lightning_logs/version_0/checkpoints/epoch=70-step=5609.ckpt')
+  m = GeneratorV2.load_from_checkpoint('./lightning_logs/version_2/checkpoints/epoch=40-step=3239.ckpt')
   m.eval()
   with torch.no_grad():
     img = Image.open('F:\\tmp\\test.jpg')

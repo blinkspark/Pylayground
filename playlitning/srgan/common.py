@@ -39,10 +39,10 @@ class ConvBlk(nn.Module):
     self.blk = nn.Sequential(
         nn.Conv2d(inputs, mid, kernel_size=kernel_size, padding=padding),
         nn.SiLU(inplace=True),
-        nn.GroupNorm(mid // 4, mid),
+        nn.GroupNorm(1, mid),
         nn.Conv2d(mid, outputs, kernel_size=kernel_size, padding=padding),
         nn.SiLU(inplace=True),
-        nn.GroupNorm(outputs // 4, outputs),
+        nn.GroupNorm(1, outputs),
     )
 
   def forward(self, x):

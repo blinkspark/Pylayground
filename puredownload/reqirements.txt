@@ -1,5 +1,11 @@
+Brotli==1.0.9
+certifi==2022.9.24
+mutagen==1.46.0
+pycryptodomex==3.16.0
 PySide6==6.4.0.1
 PySide6-Addons==6.4.0.1
 PySide6-Essentials==6.4.0.1
 shiboken6==6.4.0.1
+websockets==10.4
 yapf==0.32.0
+yt-dlp==2022.11.11

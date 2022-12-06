@@ -25,7 +25,7 @@ class Generator(pl.LightningModule):
         nn.Conv2d(128, 128 * up_factor**2, kernel_size=5, padding=2),
         nn.SiLU(inplace=True),
         nn.PixelShuffle(up_factor),
-        nn.Conv2d(128, 3, kernel_size=5, padding=2),
+        nn.Conv2d(128, 3, kernel_size=1),
         nn.Tanh(),
     )
 
@@ -108,7 +108,7 @@ class GeneratorV2(pl.LightningModule):
     self.generator = nn.Sequential(
         nn.Conv2d(3, 64, kernel_size=9, padding=4),
         nn.SiLU(inplace=True),
-        nn.GroupNorm(64 // 4, 64),
+        nn.GroupNorm(1, 64),
         ConvBlk(64, 64),
         ConvBlk(64, 64),
         ConvBlk(64, 64),
@@ -116,7 +116,7 @@ class GeneratorV2(pl.LightningModule):
         nn.Conv2d(64, 64 * up_factor**2, kernel_size=5, padding=2),
         nn.PixelShuffle(up_factor),
         nn.SiLU(inplace=True),
-        nn.Conv2d(64, 3, kernel_size=9, padding=4),
+        nn.Conv2d(64, 3, kernel_size=3, padding=1),
         nn.Tanh(),
     )
 
